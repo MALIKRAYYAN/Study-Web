@@ -148,7 +148,6 @@
     </div>
 
     <script>
-        // Updated Firebase Configuration Details
         const firebaseConfig = {
             apiKey: "AIzaSyA-r2FW048N_rq2tnScx_gb3su_TIc-ymM",
             authDomain: "study-tracker-95a6e.firebaseapp.com",
@@ -176,27 +175,27 @@
                 subjects = snapshot.docs.map(doc => doc.data().name);
             }
             renderSidebarSubjects();
-        });
+        }, err => console.error(err));
 
         db.collection('todos').onSnapshot(snapshot => {
             todos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderTodos();
-        });
+        }, err => console.error(err));
 
         db.collection('tests').onSnapshot(snapshot => {
             tests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderTests();
-        });
+        }, err => console.error(err));
 
         db.collection('notes').onSnapshot(snapshot => {
             notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderNotes();
-        });
+        }, err => console.error(err));
 
         db.collection('bookPages').orderBy('timestamp', 'asc').onSnapshot(snapshot => {
             bookPages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderBookViewer();
-        });
+        }, err => console.error(err));
 
         function renderSidebarSubjects() {
             const container = document.getElementById('subject-nav-list');
@@ -409,7 +408,8 @@
             const container = document.getElementById('test-list');
             container.innerHTML = '';
             tests.forEach((test) => {
-                const card.className = 'item-card';
+                const card = document.createElement('div');
+                card.className = 'item-card';
                 card.innerHTML = `
                     <h4>${test.subject}</h4>
                     <p><strong>Date:</strong> ${new Date(test.date).toLocaleString()}</p>
@@ -430,6 +430,9 @@
 
         function deleteTest(id) { db.collection('tests').doc(id).delete(); }
         function deleteNote(id) { db.collection('notes').doc(id).delete(); }
+
+        // Initial Load
+        renderSidebarSubjects();
     </script>
 </body>
 </html>
