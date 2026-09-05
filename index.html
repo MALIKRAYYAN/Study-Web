@@ -9,7 +9,6 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -130,7 +129,7 @@
                     <input type="file" id="book-page-input" accept="image/*" multiple style="flex-grow: 1;">
                     <button onclick="uploadBookPages()" class="submit-btn">Upload Selected Pages</button>
                 </div>
-                <p id="loading-msg">Uploading to Cloud Storage... Please wait.</p>
+                <p id="loading-msg">Processing Image... Please wait.</p>
             </div>
 
             <div class="card">
@@ -159,7 +158,6 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const storage = firebase.storage();
 
         let currentSubject = '';
         let subjects = ['Physics', 'Chemistry', 'Computer', 'Maths'];
@@ -292,6 +290,7 @@
         function nextPage() { currentPageIndex++; renderBookViewer(); }
         function prevPage() { currentPageIndex--; renderBookViewer(); }
 
+        // FAST DIRECT-TO-FIRESTORE IMAGE CONVERSION
         async function uploadBookPages() {
             const fileInput = document.getElementById('book-page-input');
             const files = Array.from(fileInput.files);
@@ -300,19 +299,25 @@
             if (files.length > 0) {
                 loadingMsg.style.display = 'block';
                 for (let file of files) {
-                    const storageRef = storage.ref(`books/${Date.now()}_${file.name}`);
-                    await storageRef.put(file);
-                    const downloadURL = await storageRef.getDownloadURL();
-
+                    const base64Image = await convertFileToBase64(file);
                     await db.collection('bookPages').add({
                         subject: currentSubject,
-                        image: downloadURL,
+                        image: base64Image,
                         timestamp: Date.now()
                     });
                 }
                 loadingMsg.style.display = 'none';
                 fileInput.value = '';
             }
+        }
+
+        function convertFileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
         }
 
         function deleteCurrentPage() {
