@@ -178,19 +178,27 @@
     </div>
 
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyA-r3FWoHbNu_reQtn5cxJgd1uJTiC-ym8",
-            authDomain: "study-tracker-95a6e.firebaseapp.com",
-            projectId: "study-tracker-95a6e",
-            storageBucket: "study-tracker-95a6e.firebasestorage.app",
-            messagingSenderId: "630025882321",
-            appId: "1:630025882321:web:d08813ad0db2b36a76d3f0",
-            measurementId: "G-YTMTH60PBP"
-        };
+        // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyA-r3fWoHbNu_reQtn5cxJgD1uJTiC-ym8",
+  authDomain: "study-tracker-95a6e.firebaseapp.com",
+  projectId: "study-tracker-95a6e",
+  storageBucket: "study-tracker-95a6e.firebasestorage.app",
+  messagingSenderId: "630025882321",
+  appId: "1:630025882321:web:d08813ad0db2b36a76d3f0",
+  measurementId: "G-YTMTH60PBP"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
         let currentUser = null;
         let isLoginMode = true;
