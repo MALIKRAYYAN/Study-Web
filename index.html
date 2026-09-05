@@ -8,19 +8,33 @@
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f4f6f9; color: #333; display: flex; min-height: 100vh; }
+        
+        /* AUTH SCREEN */
+        #auth-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f172a; display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .auth-box { background: white; padding: 30px; border-radius: 12px; width: 350px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .auth-box h2 { margin-bottom: 20px; color: #1e293b; }
+        .auth-box input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 6px; }
+        .auth-btn { width: 100%; background: #0284c7; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        .toggle-auth { color: #0284c7; cursor: pointer; font-size: 0.85rem; text-decoration: underline; }
+
+        /* MAIN APP LAYOUT */
+        #app-container { display: none; width: 100%; }
         .sidebar { width: 280px; background-color: #1e293b; color: #fff; padding: 20px; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
-        .sidebar h2 { font-size: 1.2rem; color: #38bdf8; margin-bottom: 15px; text-align: center; }
+        .sidebar h2 { font-size: 1.2rem; color: #38bdf8; margin-bottom: 5px; text-align: center; }
+        .user-email-display { font-size: 0.8rem; color: #94a3b8; text-align: center; margin-bottom: 15px; word-break: break-all; }
         .subject-nav-wrapper { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
         .nav-btn { flex-grow: 1; background: transparent; color: #cbd5e1; border: none; padding: 10px 12px; text-align: left; font-size: 0.95rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: space-between; }
         .nav-btn:hover { background-color: #334155; color: #fff; }
         .nav-btn.active { background-color: #0284c7; color: #fff; }
         .delete-sub-icon { background: #ef4444; color: white; border: none; padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; }
         .add-subject-btn { background-color: #059669; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 10px; }
+        .logout-btn { background-color: #ef4444; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: auto; }
         .divider { height: 1px; background-color: #334155; margin: 10px 0; }
         .main-content { flex-grow: 1; padding: 30px; overflow-y: auto; }
         .page-header { margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; }
@@ -51,98 +65,115 @@
 </head>
 <body>
 
-    <div class="sidebar">
-        <h2>📚 Study Portal (Cloud)</h2>
-        <button class="nav-btn active" id="btn-todo" onclick="switchPage('todo', this)">✅ Daily To-Do List</button>
-        <button class="nav-btn" id="btn-tests" onclick="switchPage('tests', this)">📅 Test Schedule</button>
-        
-        <div class="divider"></div>
-        <span style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 5px;">SUBJECT PAGES</span>
-        <div id="subject-nav-list"></div>
-        <button class="add-subject-btn" onclick="addNewSubject()">➕ Add New Subject</button>
+    <!-- AUTH SECTION -->
+    <div id="auth-container">
+        <div class="auth-box">
+            <h2 id="auth-title">Login to Portal</h2>
+            <input type="email" id="auth-email" placeholder="Email Address" required>
+            <input type="password" id="auth-password" placeholder="Password" required>
+            <button class="auth-btn" id="auth-submit-btn" onclick="handleAuth()">Login</button>
+            <p class="toggle-auth" id="toggle-auth-btn" onclick="toggleAuthMode()">Don't have an account? Register</p>
+        </div>
     </div>
 
-    <div class="main-content">
-        <div class="page-header">
-            <h1 class="page-title" id="page-title">✅ Daily To-Do List</h1>
+    <!-- MAIN APP CONTAINER -->
+    <div id="app-container">
+        <div class="sidebar">
+            <h2>📚 Study Portal</h2>
+            <div class="user-email-display" id="user-email-display">user@example.com</div>
+
+            <button class="nav-btn active" id="btn-todo" onclick="switchPage('todo', this)">✅ Daily To-Do List</button>
+            <button class="nav-btn" id="btn-tests" onclick="switchPage('tests', this)">📅 Test Schedule</button>
+            
+            <div class="divider"></div>
+            <span style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 5px;">SUBJECT PAGES</span>
+            <div id="subject-nav-list"></div>
+            <button class="add-subject-btn" onclick="addNewSubject()">➕ Add New Subject</button>
+            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
         </div>
 
-        <!-- DAILY TO-DO LIST VIEW -->
-        <div id="view-todo">
-            <div class="card">
-                <h3>Daily Progress Calculation</h3>
-                <p id="progress-text" style="font-weight: 600; color: #475569;">0 / 0 Tasks Completed (0%)</p>
-                <div class="progress-box">
-                    <div class="progress-bar" id="progress-bar"></div>
-                </div>
+        <div class="main-content">
+            <div class="page-header">
+                <h1 class="page-title" id="page-title">✅ Daily To-Do List</h1>
             </div>
 
-            <div class="card">
-                <h3>Add Daily Task</h3>
-                <form id="todo-form" style="flex-direction: row;">
-                    <input type="text" id="todo-input" placeholder="e.g. Complete Physics Chapter 3..." style="flex-grow: 1;" required>
-                    <button type="submit" class="submit-btn">Add Task</button>
-                </form>
-            </div>
-            <div id="todo-list"></div>
-        </div>
-
-        <!-- TESTS SCHEDULE VIEW -->
-        <div id="view-tests" style="display: none;">
-            <div class="card">
-                <h3>Schedule New Test</h3>
-                <form id="test-form">
-                    <input type="text" id="test-subject" placeholder="Select or Type Subject" required>
-                    <input type="datetime-local" id="test-date" required>
-                    <button type="submit" class="submit-btn">Save Test</button>
-                </form>
-            </div>
-            <div class="grid-list" id="test-list"></div>
-        </div>
-
-        <!-- SUBJECT PAGE VIEW -->
-        <div id="view-notes" style="display: none;">
-            <div class="card">
-                <h3>Search Page Number</h3>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="book-search" placeholder="Enter Page Number (e.g. 2)..." style="flex-grow: 1;">
-                    <button onclick="searchBookPage()" class="submit-btn">Search Page</button>
-                </div>
-            </div>
-
-            <div class="card book-container">
-                <h3 id="book-title">Subject Digital Book / Pages</h3>
-                
-                <div class="flip-viewer" id="flip-viewer">
-                    <p style="color: #64748b;" id="empty-book-msg">No Book Pages Uploaded Yet.</p>
-                    <img id="book-img" src="" style="display: none;" alt="Book Page">
+            <!-- DAILY TO-DO LIST VIEW -->
+            <div id="view-todo">
+                <div class="card">
+                    <h3>Daily Progress Calculation</h3>
+                    <p id="progress-text" style="font-weight: 600; color: #475569;">0 / 0 Tasks Completed (0%)</p>
+                    <div class="progress-box">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
                 </div>
 
-                <div class="controls">
-                    <button class="control-btn" id="prev-page-btn" onclick="prevPage()">◀ Previous Page</button>
-                    <span id="page-indicator" style="font-weight: 600; color: #334155;">Page 0 of 0</span>
-                    <button class="control-btn" id="next-page-btn" onclick="nextPage()">Next Page ▶</button>
-                    <button class="delete-btn" id="delete-page-btn" onclick="deleteCurrentPage()" style="margin-left: 10px;">🗑️ Delete Current Page</button>
+                <div class="card">
+                    <h3>Add Daily Task</h3>
+                    <form id="todo-form" style="flex-direction: row;">
+                        <input type="text" id="todo-input" placeholder="e.g. Complete Physics Chapter 3..." style="flex-grow: 1;" required>
+                        <button type="submit" class="submit-btn">Add Task</button>
+                    </form>
                 </div>
-
-                <div class="upload-row">
-                    <input type="file" id="book-page-input" accept="image/*" multiple style="flex-grow: 1;">
-                    <button onclick="uploadBookPages()" class="submit-btn">Upload Selected Pages</button>
-                </div>
-                <p id="loading-msg">Processing Image... Please wait.</p>
+                <div id="todo-list"></div>
             </div>
 
-            <div class="card">
-                <h3 id="note-form-title">Add Written Note / Summary</h3>
-                <form id="note-form">
-                    <input type="text" id="note-title" placeholder="Topic / Chapter Title" required>
-                    <textarea id="note-content" placeholder="Write key points here..." required></textarea>
-                    <button type="submit" class="submit-btn">Save Written Note</button>
-                </form>
+            <!-- TESTS SCHEDULE VIEW -->
+            <div id="view-tests" style="display: none;">
+                <div class="card">
+                    <h3>Schedule New Test</h3>
+                    <form id="test-form">
+                        <input type="text" id="test-subject" placeholder="Select or Type Subject" required>
+                        <input type="datetime-local" id="test-date" required>
+                        <button type="submit" class="submit-btn">Save Test</button>
+                    </form>
+                </div>
+                <div class="grid-list" id="test-list"></div>
             </div>
 
-            <h3 style="margin-bottom: 15px; color: #334155;">Saved Written Notes</h3>
-            <div class="grid-list" id="note-list"></div>
+            <!-- SUBJECT PAGE VIEW -->
+            <div id="view-notes" style="display: none;">
+                <div class="card">
+                    <h3>Search Page Number</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="book-search" placeholder="Enter Page Number (e.g. 2)..." style="flex-grow: 1;">
+                        <button onclick="searchBookPage()" class="submit-btn">Search Page</button>
+                    </div>
+                </div>
+
+                <div class="card book-container">
+                    <h3 id="book-title">Subject Digital Book / Pages</h3>
+                    
+                    <div class="flip-viewer" id="flip-viewer">
+                        <p style="color: #64748b;" id="empty-book-msg">No Book Pages Uploaded Yet.</p>
+                        <img id="book-img" src="" style="display: none;" alt="Book Page">
+                    </div>
+
+                    <div class="controls">
+                        <button class="control-btn" id="prev-page-btn" onclick="prevPage()">◀ Previous Page</button>
+                        <span id="page-indicator" style="font-weight: 600; color: #334155;">Page 0 of 0</span>
+                        <button class="control-btn" id="next-page-btn" onclick="nextPage()">Next Page ▶</button>
+                        <button class="delete-btn" id="delete-page-btn" onclick="deleteCurrentPage()" style="margin-left: 10px;">🗑️ Delete Current Page</button>
+                    </div>
+
+                    <div class="upload-row">
+                        <input type="file" id="book-page-input" accept="image/*" multiple style="flex-grow: 1;">
+                        <button onclick="uploadBookPages()" class="submit-btn">Upload Selected Pages</button>
+                    </div>
+                    <p id="loading-msg">Processing Image... Please wait.</p>
+                </div>
+
+                <div class="card">
+                    <h3 id="note-form-title">Add Written Note / Summary</h3>
+                    <form id="note-form">
+                        <input type="text" id="note-title" placeholder="Topic / Chapter Title" required>
+                        <textarea id="note-content" placeholder="Write key points here..." required></textarea>
+                        <button type="submit" class="submit-btn">Save Written Note</button>
+                    </form>
+                </div>
+
+                <h3 style="margin-bottom: 15px; color: #334155;">Saved Written Notes</h3>
+                <div class="grid-list" id="note-list"></div>
+            </div>
         </div>
     </div>
 
@@ -157,7 +188,11 @@
         };
 
         firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
         const db = firebase.firestore();
+
+        let currentUser = null;
+        let isLoginMode = true;
 
         let currentSubject = '';
         let subjects = ['Physics', 'Chemistry', 'Computer', 'Maths'];
@@ -167,33 +202,87 @@
         let bookPages = [];
         let currentPageIndex = 0;
 
-        // REALTIME CLOUD LISTENERS
-        db.collection('subjects').onSnapshot(snapshot => {
-            if (!snapshot.empty) {
-                subjects = snapshot.docs.map(doc => doc.data().name);
+        let unsubSubjects, unsubTodos, unsubTests, unsubNotes, unsubPages;
+
+        // AUTH LISTENERS
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('auth-container').style.display = 'none';
+                document.getElementById('app-container').style.display = 'flex';
+                document.getElementById('user-email-display').innerText = user.email;
+                attachRealtimeListeners();
+            } else {
+                currentUser = null;
+                document.getElementById('auth-container').style.display = 'flex';
+                document.getElementById('app-container').style.display = 'none';
+                detachRealtimeListeners();
             }
-            renderSidebarSubjects();
-        }, err => console.error(err));
+        });
 
-        db.collection('todos').onSnapshot(snapshot => {
-            todos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderTodos();
-        }, err => console.error(err));
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            document.getElementById('auth-title').innerText = isLoginMode ? 'Login to Portal' : 'Register Account';
+            document.getElementById('auth-submit-btn').innerText = isLoginMode ? 'Login' : 'Register';
+            document.getElementById('toggle-auth-btn').innerText = isLoginMode ? "Don't have an account? Register" : "Already have an account? Login";
+        }
 
-        db.collection('tests').onSnapshot(snapshot => {
-            tests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderTests();
-        }, err => console.error(err));
+        function handleAuth() {
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value.trim();
 
-        db.collection('notes').onSnapshot(snapshot => {
-            notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderNotes();
-        }, err => console.error(err));
+            if (!email || !password) return alert('Please enter both Email and Password.');
 
-        db.collection('bookPages').orderBy('timestamp', 'asc').onSnapshot(snapshot => {
-            bookPages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderBookViewer();
-        }, err => console.error(err));
+            if (isLoginMode) {
+                auth.signInWithEmailAndPassword(email, password).catch(err => alert(err.message));
+            } else {
+                auth.createUserWithEmailAndPassword(email, password).then(() => {
+                    subjects.forEach(sub => db.collection('subjects').add({ name: sub, userId: auth.currentUser.uid }));
+                }).catch(err => alert(err.message));
+            }
+        }
+
+        function logout() { auth.signOut(); }
+
+        // USER-SPECIFIC REALTIME LISTENERS
+        function attachRealtimeListeners() {
+            if (!currentUser) return;
+
+            unsubSubjects = db.collection('subjects').where('userId', '==', currentUser.uid).onSnapshot(snapshot => {
+                if (!snapshot.empty) {
+                    subjects = snapshot.docs.map(doc => doc.data().name);
+                }
+                renderSidebarSubjects();
+            });
+
+            unsubTodos = db.collection('todos').where('userId', '==', currentUser.uid).onSnapshot(snapshot => {
+                todos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderTodos();
+            });
+
+            unsubTests = db.collection('tests').where('userId', '==', currentUser.uid).onSnapshot(snapshot => {
+                tests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderTests();
+            });
+
+            unsubNotes = db.collection('notes').where('userId', '==', currentUser.uid).onSnapshot(snapshot => {
+                notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderNotes();
+            });
+
+            unsubPages = db.collection('bookPages').where('userId', '==', currentUser.uid).onSnapshot(snapshot => {
+                bookPages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => a.timestamp - b.timestamp);
+                renderBookViewer();
+            });
+        }
+
+        function detachRealtimeListeners() {
+            if (unsubSubjects) unsubSubjects();
+            if (unsubTodos) unsubTodos();
+            if (unsubTests) unsubTests();
+            if (unsubNotes) unsubNotes();
+            if (unsubPages) unsubPages();
+        }
 
         function renderSidebarSubjects() {
             const container = document.getElementById('subject-nav-list');
@@ -214,14 +303,14 @@
             if (name && name.trim()) {
                 const cleanName = name.trim();
                 if (!subjects.includes(cleanName)) {
-                    db.collection('subjects').add({ name: cleanName });
+                    db.collection('subjects').add({ name: cleanName, userId: currentUser.uid });
                 }
             }
         }
 
         function deleteSubject(subName) {
             if (confirm(`Delete "${subName}"?`)) {
-                db.collection('subjects').where('name', '==', subName).get().then(snap => snap.forEach(doc => doc.ref.delete()));
+                db.collection('subjects').where('userId', '==', currentUser.uid).where('name', '==', subName).get().then(snap => snap.forEach(doc => doc.ref.delete()));
                 switchPage('todo', document.getElementById('btn-todo'));
             }
         }
@@ -290,7 +379,6 @@
         function nextPage() { currentPageIndex++; renderBookViewer(); }
         function prevPage() { currentPageIndex--; renderBookViewer(); }
 
-        // FAST DIRECT-TO-FIRESTORE IMAGE CONVERSION
         async function uploadBookPages() {
             const fileInput = document.getElementById('book-page-input');
             const files = Array.from(fileInput.files);
@@ -301,6 +389,7 @@
                 for (let file of files) {
                     const base64Image = await convertFileToBase64(file);
                     await db.collection('bookPages').add({
+                        userId: currentUser.uid,
                         subject: currentSubject,
                         image: base64Image,
                         timestamp: Date.now()
@@ -379,7 +468,7 @@
             e.preventDefault();
             const input = document.getElementById('todo-input');
             if (input.value.trim()) {
-                db.collection('todos').add({ text: input.value.trim(), completed: false });
+                db.collection('todos').add({ text: input.value.trim(), completed: false, userId: currentUser.uid });
                 input.value = '';
             }
         });
@@ -402,6 +491,7 @@
         document.getElementById('note-form').addEventListener('submit', (e) => {
             e.preventDefault();
             db.collection('notes').add({
+                userId: currentUser.uid,
                 subject: currentSubject,
                 title: document.getElementById('note-title').value,
                 content: document.getElementById('note-content').value
@@ -427,6 +517,7 @@
         document.getElementById('test-form').addEventListener('submit', (e) => {
             e.preventDefault();
             db.collection('tests').add({
+                userId: currentUser.uid,
                 subject: document.getElementById('test-subject').value,
                 date: document.getElementById('test-date').value
             });
@@ -435,9 +526,6 @@
 
         function deleteTest(id) { db.collection('tests').doc(id).delete(); }
         function deleteNote(id) { db.collection('notes').doc(id).delete(); }
-
-        // Initial Load
-        renderSidebarSubjects();
     </script>
 </body>
 </html>
